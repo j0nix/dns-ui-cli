@@ -11,23 +11,21 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class dnsuiAPI():
 
-
-    # New strategy. Add actions to a list, use command commit that takes an comment as input. We then can track changes related to tickets.
-
+    # Basic data
     url = 'https://localhost'
     api = '/api/v2/zones/'
     baseurl = ""
 
-    #add_tmpl = str('{ "actions": [ { "action": "%s","name": "%s","type": "A","ttl": "1H","comment": "","records": [{"content": "%s","enabled": true}]}],"comment": "%s@dns-ui-cli"}')
-    #del_tmpl = str('')
-
+    # Action Templates
     add_tmpl=str('{ "action": "%s","name": "%s", "type": "A","ttl": "1H","comment": "%s","records": [ { "content": "%s", "enabled": true }]}')
     delete_tmpl = str('{"action": "delete","name": "%s","type": "A"}')
     actions_tmpl = str('{ "actions": [%s],"comment": "%s"}')
 
+    # Validation regexp
     validName = re.compile("^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]+[a-zA-Z0-9]))+$")
     validIpV4 = re.compile("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
 
+    # class variables
     zones = []
     commits = []
     usr = ''
@@ -37,6 +35,7 @@ class dnsuiAPI():
 
     def __init__(self,usr,pwd):
     
+        # If we have a config file, read it
         try:
             with open(".dns-ui-cli.yml", 'r') as ymlfile:
                 cfg = yaml.load(ymlfile)
@@ -45,6 +44,7 @@ class dnsuiAPI():
 
         if cfg:
 
+            # Parse and set values if present  
             try:
                 if cfg['dns-ui']['url']:
                     self.url = cfg['dns-ui']['url']
@@ -61,41 +61,39 @@ class dnsuiAPI():
         self.baseurl = "{}{}".format(self.url,self.api)
        
         try:
-            r = requests.get(self.baseurl, auth=(usr, pwd), verify=self.SSL_VERIFY)
-            self.usr = usr
-            self.pwd = pwd
-            zones = r.json()
+            # Get zones that you have access to
+            myzones = requests.get(self.baseurl, auth=(usr, pwd), verify=self.SSL_VERIFY)
+            zones = myzones.json()
             for zone in zones:
                 self.zones.append(zone['name'])
+
+            # Save usr/pwd
+            self.usr = usr
+            self.pwd = pwd
 
         except requests.exceptions.ConnectionError:
             print "CONNECTION ERROR: Failed to connect to '{}'".format(self.baseurl)
 
         except:
 
-            if r:
-                if r.status_code == 401:
+            if myzones:
+
+                if myzones.status_code == 401:
                     print "UNAUTHORIZED ACCESS to {}".format(self.baseurl)
                 else:
-                    print "Failed to get data from %s [%s, %s] " % (self.baseurl, r.status_code,r.request.headers)
+                    print "Failed to get data from %s [%s, %s] " % (self.baseurl,myzones.status_code,myzones.request.headers)
 
             else:
                 print "ERROR:".format(sys.exc_info())
 
-
-    def get_template(self):
-        return self.template
-
-    def batch_records(self,filename):
-        # read from file to batch add records
-        pass
-
+    # Commit your actions, include zone and commit comment
     def commit(self,zone,comment):
-
+    
+        # Prepare that json data 
 	data = self.actions_tmpl % (",".join(self.commits),comment)
-
 	data = json.loads(data)
 
+        # zone needs to end wirh a dot
         if not zone.endswith('.'):
 		zone = "{}.".format(zone)
 
@@ -103,15 +101,31 @@ class dnsuiAPI():
 	sess = requests.Session()
         sess.auth = (self.usr,self.pwd)
 
-	# Add that record
+	# Commit actions
 	patch = sess.patch(url=self.baseurl+zone, data=json.dumps(data),verify=False)
 
 	# Success ?
 	if patch.status_code == 200:
+            # truncate commits
+            del self.commits[:]
 	    return "SUCCESS adding to {}".format(zone)
 	else:
-            return "FAIL adding to {} => [data]: {} [http-code]: {} [http-headers]: {}".format(zone,json.dumps(data),patch.status_code,patch.request.headers)
+            return "FAIL adding to {} => [data]: {} [reply]: {} [http-code]: {} [http-headers]: {}".format(zone,json.dumps(data),patch.txt,patch.status_code,patch.request.headers)
 
+    def list_commits(self):
+
+        for i in range(len(self.commits)): 
+            c = json.loads(self.commits[i])
+            print "[{}] {} {} {}".format(i,c['action'],c['name'],c['records'][0]['content'])
+    
+    def remove_commits(self,index):
+            
+        try:
+            x = int(index)
+            del self.commits[x]
+        except:
+            print "Failed remove index {}".format(index)
+    
     def add_record(self,name,ipaddr):
 
 	valid = self.validName.match(name);
@@ -136,7 +150,6 @@ class dnsuiCMD(cmd.Cmd):
     zone = "?"
     intro = "::Simple dnsui-cli by j0nix::"
     prompt = '[ZONE {}]: '.format(zone)
-
     dnsui = None
 
     def preloop(self):
@@ -168,10 +181,6 @@ class dnsuiCMD(cmd.Cmd):
             print "Found 0 zones !?, bailing out!"
             exit(1)
 
-    def emptyline(self):
-        pass
-
-
     def do_add(self, record):
 
         if self.zone in self.dnsui.zones:
@@ -192,6 +201,12 @@ class dnsuiCMD(cmd.Cmd):
             print 'Missing zone, you MUST set zone'
             self.help_zone()
 
+    def do_list(self,line):
+        self.dnsui.list_commits()
+
+    def do_remove(self,index):
+        self.dnsui.remove_commits(index)
+
     def do_zone(self, zone):
 
         if zone:
@@ -201,6 +216,8 @@ class dnsuiCMD(cmd.Cmd):
         else:
             self.help_zone()
 
+    def do_EOF(self, line):
+        return True
 
     def complete_zone(self, text, line, begidx, endidx):
 
@@ -211,6 +228,12 @@ class dnsuiCMD(cmd.Cmd):
 
         return completions
 
+    def emptyline(self):
+        pass
+
+    def do_exit(self, line):
+        return True
+
     def help_zone(self):
 
         print "\nSYNTAX: zone [zone]"
@@ -219,14 +242,8 @@ class dnsuiCMD(cmd.Cmd):
             print "\t{}".format(zone)
         print "\n Ex.\n\tzone int.comhem.com\n"
 
-    def do_exit(self, line):
-        return True
-
     def help_exit(self):
         print "exit"
-
-    def do_EOF(self, line):
-        return True
     
     def help_EOF(self):
         print "ctrl+d to exit"
