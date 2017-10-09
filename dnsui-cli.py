@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+''' https://github.com/j0nix '''
 import cmd
 import re
 import sys
@@ -11,10 +12,9 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class dnsuiAPI():
 
-    # Basic data
+    # API endpoint data, defaults, can be set in configfile
     url = 'https://localhost'
     api = '/api/v2/zones/'
-    baseurl = ""
 
     # Action Templates
     add_tmpl=str('{ "action": "%s","name": "%s", "type": "A","ttl": "1H","comment": "%s","records": [ { "content": "%s", "enabled": true }]}')
@@ -25,13 +25,12 @@ class dnsuiAPI():
     validName = re.compile("^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]+[a-zA-Z0-9]))+$")
     validIpV4 = re.compile("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
 
-    # class variables
+    # Store zones
     zones = []
+    # Temporary store commits
     commits = []
-    usr = ''
-    pwd = ''
 
-    SSL_VERIFY = False
+
 
     def __init__(self,usr,pwd):
     
@@ -41,7 +40,8 @@ class dnsuiAPI():
                 cfg = yaml.load(ymlfile)
         except:
             pass
-
+        
+        # If we had that configfile, parse data from dns-ui section
         if cfg:
 
             # Parse and set values if present  
@@ -56,6 +56,12 @@ class dnsuiAPI():
                     self.api = cfg['dns-ui']['api']
             except:
                 pass
+    
+            try:
+                if cfg['dns-ui']['ssl_verify']:
+                    self.api = cfg['dns-ui']['ssl_verify']
+            except:
+                self.SSL_VERIFY = False
         
         # Set baseurl
         self.baseurl = "{}{}".format(self.url,self.api)
@@ -139,10 +145,9 @@ class dnsuiAPI():
             return "Not a valid ipaddress '%s'" % ipaddr
 
 	action = self.add_tmpl % ("add",name,self.usr,ipaddr)
-
         self.commits.append(action)
 
-        return "{} {} added".format(name,ipaddr)
+        return "Added {} {} to commit queue".format(name,ipaddr)
 
 
 class dnsuiCMD(cmd.Cmd):
@@ -161,10 +166,6 @@ class dnsuiCMD(cmd.Cmd):
             if cfg['autologin']:
                 usr = cfg['autologin']
                 print "Autologin set in conf file, login as user {}".format(usr)
-
-            # TODO: Add ask for pwd input and store crypted password in a file called
-            # something like .dns-ui-cli.<usr>.pwd, then we can automagic login
-            # ..for now, ask for password
 
         except:
             usr = raw_input("Username: ")
@@ -190,6 +191,9 @@ class dnsuiCMD(cmd.Cmd):
             print 'Missing zone, you MUST set zone'
             self.help_zone()
 
+    def help_add(self):
+        print "TODO"
+
     def do_commit(self,comment):
         
         if self.zone in self.dnsui.zones:
@@ -201,11 +205,20 @@ class dnsuiCMD(cmd.Cmd):
             print 'Missing zone, you MUST set zone'
             self.help_zone()
 
+    def help_commit(self):
+        print "TODO"
+
     def do_list(self,line):
         self.dnsui.list_commits()
 
+    def help_list(self):
+        print "TODO"
+
     def do_remove(self,index):
         self.dnsui.remove_commits(index)
+
+    def help_remove(self):
+        print "TODO"
 
     def do_zone(self, zone):
 
@@ -216,8 +229,13 @@ class dnsuiCMD(cmd.Cmd):
         else:
             self.help_zone()
 
-    def do_EOF(self, line):
-        return True
+    def help_zone(self):
+
+        print "\nSYNTAX: zone [zone]"
+        print "\nZones:"
+        for zone in self.dnsui.zones:
+            print "\t{}".format(zone)
+        print "\n Ex.\n\tzone int.comhem.com\n"
 
     def complete_zone(self, text, line, begidx, endidx):
 
@@ -228,25 +246,22 @@ class dnsuiCMD(cmd.Cmd):
 
         return completions
 
-    def emptyline(self):
-        pass
+    def do_EOF(self, line):
+        return True
+
+    def help_EOF(self):
+        print "ctrl+d to exit"
 
     def do_exit(self, line):
         return True
 
-    def help_zone(self):
-
-        print "\nSYNTAX: zone [zone]"
-        print "\nZones:"
-        for zone in self.dnsui.zones:
-            print "\t{}".format(zone)
-        print "\n Ex.\n\tzone int.comhem.com\n"
-
     def help_exit(self):
         print "exit"
+
+    def emptyline(self):
+        pass
+
     
-    def help_EOF(self):
-        print "ctrl+d to exit"
 
 if __name__ == '__main__':
     dnsuiCMD().cmdloop()
