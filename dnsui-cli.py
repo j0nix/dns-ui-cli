@@ -6,38 +6,57 @@ import sys
 import requests
 import json
 import getpass
+import yaml
+
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-#USAGE = '''Synopsis: A simple cli for dns-ui api.'''
-#def parse_args():
-#    parser = argparse.ArgumentParser(usage=USAGE)
-#    parser.add_argument('--zone', '-z', type=str, dest='zone', help='Zone to interact with')
-#    args = parser.parse_args()
-#    return args
-
-
 class dnsuiAPI():
 
+
     # Config file this
-    baseurl = 'https://<url>/api/v2/zones/'
+    url = 'https://localhost'
+    api = '/api/v2/zones/'
+
+    baseurl = ""
 
     add_tmpl = str('{ "actions": [ { "action": "%s","name": "%s","type": "A","ttl": "1H","comment": "","records": [{"content": "%s","enabled": true}]}],"comment": "%s@dns-ui-cli"}')
     del_tmpl = str('')
 
     validName = re.compile("^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]+[a-zA-Z0-9]))+$")
-
     validIpV4 = re.compile("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
-
     zones = []
-
     usr = ''
     pwd = ''
-
     SSL_VERIFY = False
 
     def __init__(self,usr,pwd):
+    
+        try:
+
+            with open(".dns-ui-cli.yml", 'r') as ymlfile:
+                cfg = yaml.load(ymlfile)
+        except:
+            pass
+
+        if cfg:
+
+            try:
+                if cfg['dns-ui']['url']:
+                    self.url = cfg['dns-ui']['url']
+
+            except:
+                pass
+
+            try:
+                if cfg['dns-ui']['api']:
+                    self.api = cfg['dns-ui']['api']
+
+            except:
+                pass
+
+            self.baseurl = "{}{}".format(self.url,self.api)
        
         try:
 
@@ -52,11 +71,18 @@ class dnsuiAPI():
                 self.zones.append(zone['name'])
 
         except:
-            print "Failed to get data from %s : %s" % (self.baseurl, sys.exc_info())
-            raise
+
+            if r.status_code == 401:
+                print "UNAUTHORIZED, Failed to get zone data from {}".format(self.baseurl)
+            else:
+                print "Failed to get data from %s [%s, %s] " % (self.baseurl, r.status_code,r.request.headers)
 
     def get_template(self):
         return self.template
+
+    def batch_records(self,filename):
+        # read from file to batch add records
+        pass
 
     def add_record(self,zone,name,ipaddr):
 
@@ -98,29 +124,46 @@ class dnsuiAPI():
 	    return "SUCCESS {} {}.{} {}".format(action,name,zone,ipaddr)
 
 	else:
-            return "FAIL {} {}.{} {} => http-code: {} http-headers: {}".format(action,name,zone,ipaddr,patch.status_code,req.request.headers)
+            return "FAIL {} {}.{} {} => http-code: {} http-headers: {}".format(action,name,zone,ipaddr,patch.status_code,patch.request.headers)
 
 
 class dnsuiCMD(cmd.Cmd):
-    """Simple command processor example."""
 
     zone = "?"
-    intro = "Simple dnsui-cli"
+    intro = "Simple dnsui-cli by j0nix"
     prompt = '[ZONE {}]: '.format(zone)
 
     dnsui = None
 
     def preloop(self):
 
-        usr = raw_input("Username: ")
+        try:
+
+            with open(".dns-ui-cli.yml", 'r') as ymlfile:
+                cfg = yaml.load(ymlfile)
+            
+            if cfg['autologin']:
+                usr = cfg['autologin']
+                print "login as user {}".format(usr)
+
+            # TODO: Add ask for pwd input and store crypted password in a file called
+            # something like .dns-ui-cli.<usr>.pwd, then we can automagic login
+            # ..for now, ask for password
+
+        except:
+            usr = raw_input("Username: ")
+
         pwd = getpass.getpass('Password: ')
 
         self.dnsui = dnsuiAPI(usr,pwd)
 
         if self.dnsui == None:
             print "Failes fetching zones from dns-ui, bailing out!"
-            return True
-
+            exit(1)
+        
+        if len(self.dnsui.zones) == 0:
+            print "No zones!?, bailing out!"
+            exit(1)
 
     def emptyline(self):
         pass
@@ -181,19 +224,4 @@ class dnsuiCMD(cmd.Cmd):
         print "ctrl+d to exit"
 
 if __name__ == '__main__':
-
-
-    #if len(sys.argv) > 1:
-    #    args = parse_args()
-    #    if args.zone:
-    #        zone = args.zone
-
-    #    if zone !=None:
-            #result = get_zone_data(BASEURL + "/zones/" + zone,usr,pwd)
-    #        result = dnsuiCMD().onecmd(' '.join(sys.argv[1:]))
-
-    #    if result != None:
-    #        print result
-
-    #else:
     dnsuiCMD().cmdloop()

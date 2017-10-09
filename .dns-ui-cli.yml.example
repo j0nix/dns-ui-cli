@@ -1,0 +1,5 @@
+dns-ui:
+  url: https://mydnsui.mydomain.com
+  api: /api/v2/zones/
+
+autologin: myusername
