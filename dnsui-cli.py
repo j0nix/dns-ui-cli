@@ -102,7 +102,7 @@ class dnsuiAPI():
 	# If we failed due to existing name in zone, we try update, would like an other http error code here, perhaps patch dnsui
 	if patch.status_code == 400:
             action = "update"
-	    data = update_tmpl % (action,name,ipaddr,self.usr)
+	    data = add_tmpl % (action,name,ipaddr,self.usr)
 	    data = json.loads(data)
 	    patch = sess.patch(url=self.baseurl+zone, data=json.dumps(data),verify=False)
 
