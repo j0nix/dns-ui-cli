@@ -11,6 +11,12 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class dnsuiAPI():
 
+
+    # New strategy. Add actions to a list, use command commit that takes an comment as input. We then can track changes related to tickets.
+    # add_update_tmpl=str('{ "action": "%s","name": "%s", "type": "A","ttl": "1H","comment": "%s","records": [ { "content": "%s", "enabled": true }]}') % (action,name,usr,ipaddr)
+    # delete_tmpl = str('{"action": "delete","name": "%s","type": "A"}') % (name)
+    # action_tmpl = str('{ "actions": [%s],"comment": "%s"}') % ",".join(self.actions)
+
     url = 'https://localhost'
     api = '/api/v2/zones/'
     baseurl = ""
@@ -60,7 +66,7 @@ class dnsuiAPI():
         except:
 
             if r.status_code == 401:
-                print "UNAUTHORIZED, Failed to get zone data from {}".format(self.baseurl)
+                print "UNAUTHORIZED ACCESS to {}".format(self.baseurl)
             else:
                 print "Failed to get data from %s [%s, %s] " % (self.baseurl, r.status_code,r.request.headers)
 
@@ -117,7 +123,7 @@ class dnsuiAPI():
 class dnsuiCMD(cmd.Cmd):
 
     zone = "?"
-    intro = "Simple dnsui-cli by j0nix"
+    intro = "::Simple dnsui-cli by j0nix::"
     prompt = '[ZONE {}]: '.format(zone)
 
     dnsui = None
@@ -130,7 +136,7 @@ class dnsuiCMD(cmd.Cmd):
             
             if cfg['autologin']:
                 usr = cfg['autologin']
-                print "login as user {}".format(usr)
+                print "Autologin set in conf file, login as user {}".format(usr)
 
             # TODO: Add ask for pwd input and store crypted password in a file called
             # something like .dns-ui-cli.<usr>.pwd, then we can automagic login
@@ -144,11 +150,11 @@ class dnsuiCMD(cmd.Cmd):
         self.dnsui = dnsuiAPI(usr,pwd)
 
         if self.dnsui == None:
-            print "Failes fetching zones from dns-ui, bailing out!"
+            print "Failed initiate communication with dns-ui, bailing out!"
             exit(1)
         
         if len(self.dnsui.zones) == 0:
-            print "No zones!?, bailing out!"
+            print "Found 0 zones !?, bailing out!"
             exit(1)
 
     def emptyline(self):
