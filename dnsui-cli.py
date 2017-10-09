@@ -13,18 +13,23 @@ class dnsuiAPI():
 
 
     # New strategy. Add actions to a list, use command commit that takes an comment as input. We then can track changes related to tickets.
-    # add_update_tmpl=str('{ "action": "%s","name": "%s", "type": "A","ttl": "1H","comment": "%s","records": [ { "content": "%s", "enabled": true }]}') % (action,name,usr,ipaddr)
-    # delete_tmpl = str('{"action": "delete","name": "%s","type": "A"}') % (name)
-    # action_tmpl = str('{ "actions": [%s],"comment": "%s"}') % ",".join(self.actions)
 
     url = 'https://localhost'
     api = '/api/v2/zones/'
     baseurl = ""
-    add_tmpl = str('{ "actions": [ { "action": "%s","name": "%s","type": "A","ttl": "1H","comment": "","records": [{"content": "%s","enabled": true}]}],"comment": "%s@dns-ui-cli"}')
-    del_tmpl = str('')
+
+    #add_tmpl = str('{ "actions": [ { "action": "%s","name": "%s","type": "A","ttl": "1H","comment": "","records": [{"content": "%s","enabled": true}]}],"comment": "%s@dns-ui-cli"}')
+    #del_tmpl = str('')
+
+    add_tmpl=str('{ "action": "%s","name": "%s", "type": "A","ttl": "1H","comment": "%s","records": [ { "content": "%s", "enabled": true }]}')
+    delete_tmpl = str('{"action": "delete","name": "%s","type": "A"}')
+    actions_tmpl = str('{ "actions": [%s],"comment": "%s"}')
+
     validName = re.compile("^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]+[a-zA-Z0-9]))+$")
     validIpV4 = re.compile("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
+
     zones = []
+    commits = []
     usr = ''
     pwd = ''
 
@@ -63,12 +68,20 @@ class dnsuiAPI():
             for zone in zones:
                 self.zones.append(zone['name'])
 
+        except requests.exceptions.ConnectionError:
+            print "CONNECTION ERROR: Failed to connect to '{}'".format(self.baseurl)
+
         except:
 
-            if r.status_code == 401:
-                print "UNAUTHORIZED ACCESS to {}".format(self.baseurl)
+            if r:
+                if r.status_code == 401:
+                    print "UNAUTHORIZED ACCESS to {}".format(self.baseurl)
+                else:
+                    print "Failed to get data from %s [%s, %s] " % (self.baseurl, r.status_code,r.request.headers)
+
             else:
-                print "Failed to get data from %s [%s, %s] " % (self.baseurl, r.status_code,r.request.headers)
+                print "ERROR:".format(sys.exc_info())
+
 
     def get_template(self):
         return self.template
@@ -77,9 +90,29 @@ class dnsuiAPI():
         # read from file to batch add records
         pass
 
-    def add_record(self,zone,name,ipaddr):
+    def commit(self,zone,comment):
 
-        action = "add"
+	data = self.actions_tmpl % (",".join(self.commits),comment)
+
+	data = json.loads(data)
+
+        if not zone.endswith('.'):
+		zone = "{}.".format(zone)
+
+	# start a session
+	sess = requests.Session()
+        sess.auth = (self.usr,self.pwd)
+
+	# Add that record
+	patch = sess.patch(url=self.baseurl+zone, data=json.dumps(data),verify=False)
+
+	# Success ?
+	if patch.status_code == 200:
+	    return "SUCCESS adding to {}".format(zone)
+	else:
+            return "FAIL adding to {} => [data]: {} [http-code]: {} [http-headers]: {}".format(zone,json.dumps(data),patch.status_code,patch.request.headers)
+
+    def add_record(self,name,ipaddr):
 
 	valid = self.validName.match(name);
 
@@ -91,33 +124,11 @@ class dnsuiAPI():
         if not valid:
             return "Not a valid ipaddress '%s'" % ipaddr
 
-	data = self.add_tmpl % (action,name,ipaddr,self.usr)
+	action = self.add_tmpl % ("add",name,self.usr,ipaddr)
 
-	data = json.loads(data)
+        self.commits.append(action)
 
-	if not zone.endswith('.'):
-		zone = "{}.".format(zone)
-
-	# start a session
-	sess = requests.Session()
-        sess.auth = (self.usr,self.pwd)
-
-	# Add that record
-	patch = sess.patch(url=self.baseurl+zone, data=json.dumps(data),verify=False)
-
-	# If we failed due to existing name in zone, we try update, would like an other http error code here, perhaps patch dnsui
-	if patch.status_code == 400:
-            action = "update"
-	    data = add_tmpl % (action,name,ipaddr,self.usr)
-	    data = json.loads(data)
-	    patch = sess.patch(url=self.baseurl+zone, data=json.dumps(data),verify=False)
-
-	# Success ?
-	if patch.status_code == 200:
-	    return "SUCCESS {} {}.{} {}".format(action,name,zone,ipaddr)
-
-	else:
-            return "FAIL {} {}.{} {} => http-code: {} http-headers: {}".format(action,name,zone,ipaddr,patch.status_code,patch.request.headers)
+        return "{} {} added".format(name,ipaddr)
 
 
 class dnsuiCMD(cmd.Cmd):
@@ -165,7 +176,18 @@ class dnsuiCMD(cmd.Cmd):
 
         if self.zone in self.dnsui.zones:
             temp = record.split()
-            print self.dnsui.add_record(self.zone,temp[0],temp[1])
+            print self.dnsui.add_record(temp[0],temp[1])
+        else:
+            print 'Missing zone, you MUST set zone'
+            self.help_zone()
+
+    def do_commit(self,comment):
+        
+        if self.zone in self.dnsui.zones:
+            if len(self.dnsui.commits) > 0:
+                print self.dnsui.commit(self.zone,comment)
+            else:
+                print "nothing to commit?"
         else:
             print 'Missing zone, you MUST set zone'
             self.help_zone()
