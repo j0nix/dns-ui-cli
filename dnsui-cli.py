@@ -196,4 +196,4 @@ if __name__ == '__main__':
     #        print result
 
     #else:
-    #    dnsuiCMD().cmdloop()
+    dnsuiCMD().cmdloop()
