@@ -10,19 +10,18 @@ import getpass
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-USAGE = '''Synopsis: A simple cli communicating with dns-ui api.'''
-
-def parse_args():
-    parser = argparse.ArgumentParser(usage=USAGE)
-    parser.add_argument('--zone', '-z', type=str, dest='zone', help='Zone to interact with')
-    args = parser.parse_args()
-    return args
+#USAGE = '''Synopsis: A simple cli for dns-ui api.'''
+#def parse_args():
+#    parser = argparse.ArgumentParser(usage=USAGE)
+#    parser.add_argument('--zone', '-z', type=str, dest='zone', help='Zone to interact with')
+#    args = parser.parse_args()
+#    return args
 
 
 class dnsuiAPI():
 
-    # Config file this beaich
-    baseurl = 'https://dnsui-test.int.comhem.com/api/v2/zones/'
+    # Config file this
+    baseurl = 'https://<url>/api/v2/zones/'
 
     add_tmpl = str('{ "actions": [ { "action": "%s","name": "%s","type": "A","ttl": "1H","comment": "","records": [{"content": "%s","enabled": true}]}],"comment": "%s@dns-ui-cli"}')
     del_tmpl = str('')
@@ -184,17 +183,17 @@ class dnsuiCMD(cmd.Cmd):
 if __name__ == '__main__':
 
 
-    if len(sys.argv) > 1:
-        args = parse_args()
-        if args.zone:
-            zone = args.zone
+    #if len(sys.argv) > 1:
+    #    args = parse_args()
+    #    if args.zone:
+    #        zone = args.zone
 
-        if zone !=None:
+    #    if zone !=None:
             #result = get_zone_data(BASEURL + "/zones/" + zone,usr,pwd)
-            result = dnsuiCMD().onecmd(' '.join(sys.argv[1:]))
+    #        result = dnsuiCMD().onecmd(' '.join(sys.argv[1:]))
 
-        if result != None:
-            print result
+    #    if result != None:
+    #        print result
 
-    else:
-        dnsuiCMD().cmdloop()
+    #else:
+    #    dnsuiCMD().cmdloop()
