@@ -34,7 +34,6 @@ class dnsuiAPI():
     def __init__(self,usr,pwd):
     
         try:
-
             with open(".dns-ui-cli.yml", 'r') as ymlfile:
                 cfg = yaml.load(ymlfile)
         except:
@@ -45,28 +44,23 @@ class dnsuiAPI():
             try:
                 if cfg['dns-ui']['url']:
                     self.url = cfg['dns-ui']['url']
-
             except:
                 pass
 
             try:
                 if cfg['dns-ui']['api']:
                     self.api = cfg['dns-ui']['api']
-
             except:
                 pass
-
-            self.baseurl = "{}{}".format(self.url,self.api)
+        
+        # Set baseurl
+        self.baseurl = "{}{}".format(self.url,self.api)
        
         try:
-
             r = requests.get(self.baseurl, auth=(usr, pwd), verify=self.SSL_VERIFY)
-
             self.usr = usr
             self.pwd = pwd
-
             zones = r.json()
-
             for zone in zones:
                 self.zones.append(zone['name'])
 
