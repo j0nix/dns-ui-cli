@@ -149,6 +149,36 @@ class dnsuiAPI():
 
         return "Added {} {} to commit queue".format(name,ipaddr)
 
+    def update_record(self,name,ipaddr):
+
+	valid = self.validName.match(name);
+
+        if not valid:
+	    return "Not a valid hostname '%s'" % name
+
+        valid = self.validIpV4.match(ipaddr);
+
+        if not valid:
+            return "Not a valid ipaddress '%s'" % ipaddr
+
+	action = self.add_tmpl % ("update",name,self.usr,ipaddr)
+        self.commits.append(action)
+
+        return "Added {} {} to commit queue".format(name,ipaddr)
+
+    def delete_record(self,name):
+
+	valid = self.validName.match(name);
+
+        if not valid:
+	    return "Not a valid hostname '%s'" % name
+
+	action = self.delete_tmpl % (name)
+        self.commits.append(action)
+
+        return "Added delete {} to commit queue".format(name)
+
+
 
 class dnsuiCMD(cmd.Cmd):
 
@@ -192,6 +222,29 @@ class dnsuiCMD(cmd.Cmd):
             self.help_zone()
 
     def help_add(self):
+        print "TODO"
+
+    def do_update(self, record):
+
+        if self.zone in self.dnsui.zones:
+            temp = record.split()
+            print self.dnsui.update_record(temp[0],temp[1])
+        else:
+            print 'Missing zone, you MUST set zone'
+            self.help_zone()
+
+    def help_update(self):
+        print "TODO"
+
+    def do_delete(self,name):
+
+        if self.zone in self.dnsui.zones:
+            print self.dnsui.delete_record(name)
+        else:
+            print 'Missing zone, you MUST set zone'
+            self.help_zone()
+
+    def help_delete(self):
         print "TODO"
 
     def do_commit(self,comment):
