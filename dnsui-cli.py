@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import cmd
 import re
 import sys
@@ -7,28 +6,22 @@ import requests
 import json
 import getpass
 import yaml
-
-
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 class dnsuiAPI():
 
-
-    # Config file this
     url = 'https://localhost'
     api = '/api/v2/zones/'
-
     baseurl = ""
-
     add_tmpl = str('{ "actions": [ { "action": "%s","name": "%s","type": "A","ttl": "1H","comment": "","records": [{"content": "%s","enabled": true}]}],"comment": "%s@dns-ui-cli"}')
     del_tmpl = str('')
-
     validName = re.compile("^(([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]+[a-zA-Z0-9]))+$")
     validIpV4 = re.compile("^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
     zones = []
     usr = ''
     pwd = ''
+
     SSL_VERIFY = False
 
     def __init__(self,usr,pwd):
@@ -132,7 +125,6 @@ class dnsuiCMD(cmd.Cmd):
     def preloop(self):
 
         try:
-
             with open(".dns-ui-cli.yml", 'r') as ymlfile:
                 cfg = yaml.load(ymlfile)
             
@@ -166,17 +158,11 @@ class dnsuiCMD(cmd.Cmd):
     def do_add(self, record):
 
         if self.zone in self.dnsui.zones:
-
             temp = record.split()
-
-            #print "%s %s %s" % (self.zone,temp[0],temp[1])
             print self.dnsui.add_record(self.zone,temp[0],temp[1])
-            
         else:
-
             print 'Missing zone, you MUST set zone'
             self.help_zone()
-
 
     def do_zone(self, zone):
 
