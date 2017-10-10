@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 ''' https://github.com/j0nix '''
 ''' yum install python2-requests PyYAML python-cmd2 '''
-
+import os
+import sys
 import cmd
 import re
-import sys
 import requests
 import json
 import getpass
@@ -40,7 +40,9 @@ class dnsuiAPI():
 
         # If we have a config file, read it
         try:
-            with open(".dns-ui-cli.yml", 'r') as ymlfile:
+            HOME_DIR = os.path.expanduser("~/.dns-ui-cli.yml")
+            print HOME_DIR
+            with open(HOME_DIR, 'r') as ymlfile:
                 cfg = yaml.load(ymlfile)
         except:
             pass
@@ -201,7 +203,8 @@ class dnsuiCMD(cmd.Cmd):
     def preloop(self):
 
         try:
-            with open(".dns-ui-cli.yml", 'r') as ymlfile:
+            HOME_DIR = os.path.expanduser("~/.dns-ui-cli.yml")
+            with open(HOME_DIR, 'r') as ymlfile:
                 cfg = yaml.load(ymlfile)
             
             if cfg['autologin']:
