@@ -65,9 +65,9 @@ class dnsuiAPI():
     
             try:
                 if cfg['dns-ui']['ssl_verify']:
-                    self.api = cfg['dns-ui']['ssl_verify']
+                    self.SSL_VERIFY = cfg['dns-ui']['ssl_verify']
             except:
-                self.SSL_VERIFY = False
+                pass
         
         # Set baseurl
         self.baseurl = "{}{}".format(self.url,self.api)
