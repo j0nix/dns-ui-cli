@@ -64,8 +64,8 @@ class dnsuiAPI():
                 pass
     
             try:
-                if cfg['dns-ui']['ssl_verify']:
-                    self.SSL_VERIFY = cfg['dns-ui']['ssl_verify']
+                if cfg['dns-ui']['ssl-verify']:
+                    self.SSL_VERIFY = cfg['dns-ui']['ssl-verify']
             except:
                 pass
         
@@ -141,9 +141,9 @@ class dnsuiAPI():
         try:
             x = int(index)
             del self.commits[x]
-            return "Removed index {}".format(index)
+            return "Removed index {} from commit queue".format(index)
         except:
-            return "Failed remove index {}".format(index)
+            return "Failed remove index {} from commit queue".format(index)
     
     def add_record(self,name,ipaddr):
 

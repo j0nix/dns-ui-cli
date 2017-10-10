@@ -36,10 +36,10 @@ First you login to to the cli, when you do that it fetches all zones your user a
   [1] add server-2 10.10.10.11
   [2] add server-3 10.10.10.12
   ```
-- **ohh... we dont't need to add that record with index 2, lets remove it from queue**
+- **ohh... we don't need to add that record with index 2, lets remove it from queue**
   ```
   [ZONE my.company.se.]: remove 2
-  Removed index 2
+  Removed index 2 from commit queue
   [ZONE my.company.se.]: list
   [0] add server-1 10.10.10.10
   [1] add server-2 10.10.10.11
@@ -70,10 +70,19 @@ dns-ui:
   api: /api/v2/zones/
 
 ```
+Also can also enable verifying the SSL certficate (default False)
+
+```
+dns-ui:
+  ssl-verify: True
+
+```
 
 ## TODO
 
 - Add more help data
 - Catch more exceptions
 - Add support for CNAME
+- Add debug option (To track down those inglorious typeo:s)
+- Add support to add username & password (encrypted as hell) in config file
 
