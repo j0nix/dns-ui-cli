@@ -139,8 +139,9 @@ class dnsuiAPI():
         try:
             x = int(index)
             del self.commits[x]
+            return "Removed index {}".format(index)
         except:
-            print "Failed remove index {}".format(index)
+            return "Failed remove index {}".format(index)
     
     def add_record(self,name,ipaddr):
 
@@ -278,7 +279,7 @@ class dnsuiCMD(cmd.Cmd):
         print "TODO"
 
     def do_remove(self,index):
-        self.dnsui.remove_commits(index)
+        print self.dnsui.remove_commits(index)
 
     def help_remove(self):
         print "TODO"
