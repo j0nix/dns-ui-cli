@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 ''' https://github.com/j0nix '''
+''' yum install python2-requests PyYAML python-cmd2 '''
+
 import cmd
 import re
 import sys
@@ -30,10 +32,12 @@ class dnsuiAPI():
     # Temporary store commits
     commits = []
 
-
+    SSL_VERIFY = False
 
     def __init__(self,usr,pwd):
-    
+   
+        cfg = None
+
         # If we have a config file, read it
         try:
             with open(".dns-ui-cli.yml", 'r') as ymlfile:
@@ -66,6 +70,8 @@ class dnsuiAPI():
         # Set baseurl
         self.baseurl = "{}{}".format(self.url,self.api)
        
+        myzones = None
+
         try:
             # Get zones that you have access to
             myzones = requests.get(self.baseurl, auth=(usr, pwd), verify=self.SSL_VERIFY)
@@ -90,7 +96,7 @@ class dnsuiAPI():
                     print "Failed to get data from %s [%s, %s] " % (self.baseurl,myzones.status_code,myzones.request.headers)
 
             else:
-                print "ERROR:".format(sys.exc_info())
+                print "ERROR: {}".format(sys.exc_info())
 
     # Commit your actions, include zone and commit comment
     def commit(self,zone,comment):
@@ -122,7 +128,11 @@ class dnsuiAPI():
 
         for i in range(len(self.commits)): 
             c = json.loads(self.commits[i])
-            print "[{}] {} {} {}".format(i,c['action'],c['name'],c['records'][0]['content'])
+            try:
+                print "[{}] {} {} {}".format(i,c['action'],c['name'],c['records'][0]['content'])
+            except KeyError:
+                print "[{}] {} {}".format(i,c['action'],c['name'])
+                
     
     def remove_commits(self,index):
             
