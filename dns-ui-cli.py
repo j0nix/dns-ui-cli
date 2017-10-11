@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 ''' https://github.com/j0nix '''
-''' yum install python2-requests PyYAML python-cmd2 '''
+''' yum install python2-requests PyYAML python-cmd2'''
 import os
 import sys
 import cmd
@@ -12,9 +12,30 @@ import yaml
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+# Rerad config-files class
+class readConfig:
+
+    dnsuiconfigfile = os.path.expanduser("~/.dns-ui-cli.yml")
+    dnsuiconf = None
+
+    def dnsui(self):
+
+        try:
+            with open(self.dnsuiconfigfile, 'r') as ymlfile:
+                self.dnsuiconf = yaml.load(ymlfile)
+
+        except IOError:
+            print "No configfile, use defaults"
+        except:
+            print "Unexpected error reading config file:", sys.exc_info()[0]
+        finally: 
+            return self.dnsuiconf
+
+
+# Class to interact with dns-ui API.. and some
 class dnsuiAPI():
 
-    # API endpoint data, defaults, can be set in configfile
+    # Default API endpoint data, can be changed in configfile
     url = 'https://localhost'
     api = '/api/v2/zones/'
 
@@ -34,46 +55,37 @@ class dnsuiAPI():
 
     SSL_VERIFY = False
 
-    def __init__(self,usr,pwd):
+    def __init__(self,usr,pwd,configobj=None):
    
-        cfg = None
-
-        # If we have a config file, read it
-        try:
-            HOME_DIR = os.path.expanduser("~/.dns-ui-cli.yml")
-            print HOME_DIR
-            with open(HOME_DIR, 'r') as ymlfile:
-                cfg = yaml.load(ymlfile)
-        except:
-            pass
-        
         # If we had that configfile, parse data from dns-ui section
-        if cfg:
+        if configobj:
+
+            uicfg = configobj.dnsui()
 
             # Parse and set values if present  
             try:
-                if cfg['dns-ui']['url']:
-                    self.url = cfg['dns-ui']['url']
+                if uicfg['dns-ui']['url']:
+                    self.url = uicfg['dns-ui']['url']
             except:
                 pass
 
             try:
-                if cfg['dns-ui']['api']:
-                    self.api = cfg['dns-ui']['api']
+                if uicfg['dns-ui']['api']:
+                    self.api = uicfg['dns-ui']['api']
             except:
                 pass
     
             try:
-                if cfg['dns-ui']['ssl-verify']:
-                    self.SSL_VERIFY = cfg['dns-ui']['ssl-verify']
+                if uicfg['dns-ui']['ssl-verify']:
+                    self.SSL_VERIFY = uicfg['dns-ui']['ssl-verify']
             except:
                 pass
         
         # Set baseurl
         self.baseurl = "{}{}".format(self.url,self.api)
-       
-        myzones = None
 
+        print "* dns-ui@{}, ssl-verify={}".format(self.baseurl,self.SSL_VERIFY)
+       
         try:
             # Get zones that you have access to
             myzones = requests.get(self.baseurl, auth=(usr, pwd), verify=self.SSL_VERIFY)
@@ -86,45 +98,57 @@ class dnsuiAPI():
             self.pwd = pwd
 
         except requests.exceptions.ConnectionError:
-            print "CONNECTION ERROR: Failed to connect to '{}'".format(self.baseurl)
+            print "CONNECTION ERROR: Failed connect to '{}'".format(self.baseurl)
 
         except:
 
-            if myzones:
-
+            try:
                 if myzones.status_code == 401:
                     print "UNAUTHORIZED ACCESS to {}".format(self.baseurl)
                 else:
                     print "Failed to get data from %s [%s, %s] " % (self.baseurl,myzones.status_code,myzones.request.headers)
 
+            except UnboundLocalError:
+                pass
             else:
-                print "ERROR: {}".format(sys.exc_info())
+                print "ERROR: {}".format(sys.exc_info()[0])
+            finally:
+                exit(1)
+
 
     # Commit your actions, include zone and commit comment
     def commit(self,zone,comment):
-    
-        # Prepare that json data 
-	data = self.actions_tmpl % (",".join(self.commits),comment)
-	data = json.loads(data)
+  
+        if not comment:
+            return "COMMIT REQUEST DENIED, you must add a comment when commit"
 
-        # zone needs to end wirh a dot
-        if not zone.endswith('.'):
+        if zone in self.zones:
+            # Prepare that json data 
+	    data = self.actions_tmpl % (",".join(self.commits),comment)
+	    data = json.loads(data)
+
+            # zone needs to end wirh a dot
+            if not zone.endswith('.'):
 		zone = "{}.".format(zone)
 
-	# start a session
-	sess = requests.Session()
-        sess.auth = (self.usr,self.pwd)
+	    # start a session
+	    sess = requests.Session()
+            sess.auth = (self.usr,self.pwd)
 
-	# Commit actions
-	patch = sess.patch(url=self.baseurl+zone, data=json.dumps(data),verify=False)
+	    # Commit actions
+	    patch = sess.patch(url=self.baseurl+zone, data=json.dumps(data),verify=False)
 
-	# Success ?
-	if patch.status_code == 200:
-            # truncate commits
-            del self.commits[:]
-	    return "SUCCESS adding to {}".format(zone)
-	else:
-            return "FAIL adding to {} => [data]: {} [reply]: {} [http-code]: {} [http-headers]: {}".format(zone,json.dumps(data),patch.txt,patch.status_code,patch.request.headers)
+	    # Success ?
+	    if patch.status_code == 200:
+                # truncate commits
+                # Would like to have change id back in reply when patch so we can fetch that changelog data, so user can verify
+                # Will look into a pull request about this
+                del self.commits[:]
+	        return "SUCCESS adding to {}".format(zone)
+	    else:
+                return "FAIL adding to {} => [data]: {} [reply]: {} [http-code]: {} [http-headers]: {}".format(zone,json.dumps(data),patch.txt,patch.status_code,patch.request.headers)
+        else:
+            print "Invalid zone: {}".format(zone)
 
     def list_commits(self):
 
@@ -192,10 +216,9 @@ class dnsuiAPI():
         return "Added delete {} to commit queue".format(name)
 
 
-
 class dnsuiCMD(cmd.Cmd):
 
-    zone = "?"
+    zone = "<None>"
     intro = "::Simple dnsui-cli by j0nix::"
     prompt = '[ZONE {}]: '.format(zone)
     dnsui = None
@@ -203,28 +226,25 @@ class dnsuiCMD(cmd.Cmd):
     def preloop(self):
 
         try:
-            HOME_DIR = os.path.expanduser("~/.dns-ui-cli.yml")
-            with open(HOME_DIR, 'r') as ymlfile:
-                cfg = yaml.load(ymlfile)
-            
-            if cfg['autologin']:
-                usr = cfg['autologin']
-                print "Autologin set in conf file, login as user {}".format(usr)
+            config = readConfig()
+            usr = config.dnsui()['cli-user']
+            print "A user is set in configfile, login with username {}".format(usr)
 
         except:
+            raise
+            cfg = None
             usr = raw_input("Username: ")
 
         pwd = getpass.getpass('Password: ')
 
-        self.dnsui = dnsuiAPI(usr,pwd)
+        self.dnsui = dnsuiAPI(usr,pwd,config)
 
         if self.dnsui == None:
             print "Failed initiate communication with dns-ui, bailing out!"
             exit(1)
         
         if len(self.dnsui.zones) == 0:
-            print "Found 0 zones !?, bailing out!"
-            exit(1)
+            print "You don't have access to any zones!"
 
     def do_add(self, record):
 

@@ -1,5 +1,6 @@
 dns-ui:
   url: https://mydnsui.mydomain.com
   api: /api/v2/zones/
+  ssl-verify: False
 
-autologin: myusername
+cli-user: myusername
