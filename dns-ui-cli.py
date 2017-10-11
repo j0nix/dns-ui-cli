@@ -145,7 +145,7 @@ class dnsuiAPI():
                 for change in changes['changes']:
 
                     try:
-                        msg = "{}\t{}DELETE {} {}  {}ADD {} {}{}\n".format(
+                        msg = "{}\t{}DELETE {} {}{} <= ADD {} {}{}\n".format(
                                                                  msg,
                                                                  self.COLORS['red'],
                                                                  change['before']['name'],
