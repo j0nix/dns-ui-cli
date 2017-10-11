@@ -55,6 +55,14 @@ class dnsuiAPI():
 
     SSL_VERIFY = False
 
+    COLORS = { 
+               'grey':   '\033[1;30m', 'red':    '\033[1;31m',
+               'green':  '\033[1;32m', 'yellow': '\033[1;33m',
+               'brown':  '\033[0;33m', 'blue':   '\033[1;34m', 
+               'magenta':'\033[1;35m', 'cyan':   '\033[1;36m', 
+               'white':  '\033[1;37m', 'default':'\033[0m'
+             }
+
     def __init__(self,usr,pwd,configobj=None):
    
         # If we had that configfile, parse data from dns-ui section
@@ -115,6 +123,73 @@ class dnsuiAPI():
             finally:
                 exit(1)
 
+    # Needs patching upstream
+    def changelog(self,zone,patch):
+
+        try:
+
+            change_id = patch.json()['changes_id']
+
+            changelog = requests.get(
+                            self.baseurl+zone+"/changes/"+change_id, 
+                            auth=(self.usr, self.pwd), 
+                            verify=self.SSL_VERIFY
+                        )
+
+            if changelog.status_code == 200:
+
+                changes = changelog.json() 
+
+                msg = "\n\tDELETED: {}, ADDED: {}\n\n".format(changes['deleted'],changes['added'])
+
+                for change in changes['changes']:
+
+                    try:
+                        msg = "{}\t{}DELETE {} {}  {}ADD {} {}{}\n".format(
+                                                                 msg,
+                                                                 self.COLORS['red'],
+                                                                 change['before']['name'],
+                                                                 change['before']['rrs'][0]['content'],
+                                                                 self.COLORS['green'], 
+                                                                 change['after']['name'],
+                                                                 change['after']['rrs'][0]['content'],
+                                                                 self.COLORS['default'] 
+                                                             )
+                    except KeyError:
+
+                        try:
+                            msg = "{}\t{}ADD    {} {}{}\n".format(
+                                                        msg,
+                                                        self.COLORS['green'],
+                                                        change['after']['name'],
+                                                        change['after']['rrs'][0]['content'],
+                                                        self.COLORS['default']
+                                                   )
+                        except KeyError:
+
+                            try:
+                                msg = "{}\t{}DELETE {} {}{}\n".format(
+                                                              msg,
+                                                              self.COLORS['red'],
+                                                              change['before']['name'],
+                                                              change['before']['rrs'][0]['content'],
+                                                              self.COLORS['default']
+                                                          )
+                            except KeyError:
+                                msg = "{}\t{}[KeyError exception] {}{}\n".format(msg,self.COLORS['grey'],str(change),self.COLORS['default'])
+
+                return msg
+
+            else: 
+                 return "FAIL fetching changelog {}/changes/{} => [reply]: {} [http-code]: {} [http-headers]: {}".format(
+                                                                                                                    zone,
+                                                                                                                    changeid,
+                                                                                                                    changelog.content,
+                                                                                                                    changelog.status_code,
+                                                                                                                    changelog.request.headers
+                                                                                                                )
+        except:
+            raise
 
     # Commit your actions, include zone and commit comment
     def commit(self,zone,comment):
@@ -140,13 +215,20 @@ class dnsuiAPI():
 
 	    # Success ?
 	    if patch.status_code == 200:
+
+                if patch.content != 'null':
+
+                    try:
+                        print self.changelog(zone,patch)
+                    except:
+                        pass
+
                 # truncate commits
-                # Would like to have change id back in reply when patch so we can fetch that changelog data, so user can verify
-                # Will look into a pull request about this
                 del self.commits[:]
-	        return "SUCCESS adding to {}".format(zone)
+
+	        return "SUCCESS updating {}".format(zone)
 	    else:
-                return "FAIL adding to {} => [data]: {} [reply]: {} [http-code]: {} [http-headers]: {}".format(zone,json.dumps(data),patch.txt,patch.status_code,patch.request.headers)
+                return "FAIL update {} => [data]: {} [reply]: {} [http-code]: {} [http-headers]: {}".format(zone,json.dumps(data),patch.txt,patch.status_code,patch.request.headers)
         else:
             print "Invalid zone: {}".format(zone)
 
