@@ -114,20 +114,15 @@ class DnsUiApi:
 
         except requests.exceptions.ConnectionError:
             print "CONNECTION ERROR: Failed connect to '{}'".format(self.baseurl)
-
-        except:
+            exit(1)
+        except ValueError:
 
             try:
                 if myzones.status_code == 401:
                     print "UNAUTHORIZED ACCESS to {}".format(self.baseurl)
                 else:
                     print "Failed to get data from %s [%s, %s] " % (
-                        self.baseurl, myzones.status_code, myzones.request.headers)
-
-            except UnboundLocalError:
-                pass
-            else:
-                print "ERROR: {}".format(sys.exc_info()[0])
+                        self.baseurl, myzones.status_code, myzones.content)
             finally:
                 exit(1)
 
@@ -441,7 +436,7 @@ class DnsUiCmd(cmd.Cmd):
 
     @staticmethod
     def help_EOF():
-        print "ctrl+d to exit"
+        print "This adds support to ctrl+d for exit"
 
     @staticmethod
     def do_exit(line):
