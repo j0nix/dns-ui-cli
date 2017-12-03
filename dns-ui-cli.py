@@ -131,7 +131,7 @@ class DnsUiApi:
 
         try:
 
-            change_id = patch.json()['changes_id']
+            change_id = patch.json()['changeset']['id']
 
             changelog = requests.get(
                 self.baseurl + zone + "/changes/" + change_id,
@@ -206,7 +206,7 @@ class DnsUiApi:
             data = self.actions_tmpl % (",".join(self.commits), comment)
             data = json.loads(data)
 
-            # zone needs to end wirh a dot
+            # zone needs to end with a dot
             if not zone.endswith('.'):
                 zone = "{}.".format(zone)
 
@@ -231,10 +231,22 @@ class DnsUiApi:
                 del self.commits[:]
 
                 return "SUCCESS updating {}".format(zone)
+
             else:
-                return "FAIL {} [data]: {} [reply]: {} [http-code]: {} [http-headers]: {}".format(zone,
+
+                if patch.json()['errors']:
+                    errors = patch.json()
+                    errmsg = '\n'
+                    for error in errors['errors']:
+                        errmsg = errmsg + "{}, {}\n".format(error['userMessage'],error['internalMessage'])
+
+                    return errmsg
+
+                else:
+
+                    return "FAIL {} [data]: {} [reply]: {} [http-code]: {} [http-headers]: {}".format(zone,
                                                                                                   json.dumps(data),
-                                                                                                  patch.txt,
+                                                                                                  patch.raw,
                                                                                                   patch.status_code,
                                                                                                   patch.request.headers
                                                                                                   )
@@ -339,9 +351,11 @@ class DnsUiCmd(cmd.Cmd):
 
     def do_add(self, record):
 
-        if self.zone in self.dnsui.zones:
+        if self.zone in self.dnsui.zones and record:
             temp = record.split()
             print self.dnsui.add_record(temp[0], temp[1])
+        elif not record:
+            print 'Missing record input, Ex) this_is_a_record 10.10.10.10'
         else:
             print 'Missing zone, you MUST set zone'
             self.help_zone()
