@@ -244,13 +244,10 @@ class DnsUiApi:
 
                 else:
 
-                    return "FAIL {} [data]: {} [reply]: {} [http-code]: {} [http-headers]: {}".format(zone,
-                                                                                                  json.dumps(data),
-                                                                                                  patch.raw,
-                                                                                                  patch.status_code,
-                                                                                                  patch.request.headers
-                                                                                                  )
+                    return "FAIL {} [data]: {} [reply]: {} [http-code]: {} [http-headers]: {}".format(zone,json.dumps(data),patch.raw,patch.status_code,patch.request.headers)
+
         else:
+
             print "Invalid zone: {}".format(zone)
 
     def list_commits(self):

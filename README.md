@@ -5,7 +5,7 @@ cli for dns-ui, https://github.com/operasoftware/dns-ui. Sure, a pretty straight
 To make it simple
 
 ## Scope?
-Common tasks. Add, update and delete A and CNAME records in a zone.
+Common tasks. Add, update and delete A records in a zone.
 
 # Help
 ## Workflow
@@ -18,7 +18,7 @@ First you login to to the cli, when you do that it fetches all zones your user a
 - **Then you select a zone to work in** (here you can TAB to list your options)
   ```
   [ZONE ?]: zone my.company.se. 
-  using zone mgmt.comhem.com.
+  using zone my.company.se.
   ```
 - **Time to add, update or delete records**
   ```
