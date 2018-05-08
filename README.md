@@ -1,3 +1,5 @@
+![Development in progress](https://img.shields.io/badge/Dev%20status-In--Progress-orange.svg)
+
 # dns-ui-cli
 cli for dns-ui, https://github.com/operasoftware/dns-ui. Sure, a pretty straightforward GUI but it's still a GUI that you need to click around in. With this cli you don't need to drop your hands from the keaybord and fiddeling around with the mouse. Also, big zones slows down the whole web 2.0 feeling.
 
