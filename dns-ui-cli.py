@@ -43,12 +43,14 @@ class DnsUiApi:
     api = '/api/v2/zones/'
 
     # Action Templates
+    # TODO: Add support for PTR AND CNAME
     add_tmpl = str('{ "action": "%s","name": "%s", "type": "A","ttl": "1H",'
                    '"comment": "%s","records": [ { "content": "%s", "enabled": true }]}')
-    delete_tmpl = str('{"action": "delete","name": "%s","type": "A"}')
+    delete_tmpl = str('{"action": "delete","name": "%s","type": "PTR"}')
     actions_tmpl = str('{ "actions": [%s],"comment": "%s"}')
 
     # Validation regexp
+    # TODO: Add support for PTR
     validName = re.compile("^([a-zA-Z]|[a-zA-Z][a-zA-Z0-9\-]+[a-zA-Z0-9])+$")
     validIpV4 = re.compile(
         "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
